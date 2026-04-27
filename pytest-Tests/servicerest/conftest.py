@@ -4,13 +4,36 @@ import pytest
 import os
 import requests
 import json
+import logging
+from datetime import datetime
 
-from  servicerest.Utility.main import get_request_data ,base_url,get_updated_request_data ,get_variable ,compare_response_data,return_random_str,global_dict,admin_auth,headers,str_variable_dict,variable_dict
+from  Utility.main import get_request_data ,base_url,get_updated_request_data ,get_variable ,compare_response_data,return_random_str,global_dict,admin_auth,headers,str_variable_dict,variable_dict
 
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+test_data_path = os.path.join(BASE_DIR,"Utility", "test_jsons")
+LOGS_DIR = os.path.join(BASE_DIR, "logs")
+os.makedirs(LOGS_DIR, exist_ok=True)
 variables_data_path=os.path.join(BASE_DIR, "Utility", "variable_jsons")
 # setting test user before running the tests and unsetting it after the tests are done
+
+
+def setup_logging():
+    log_filename = f"test_run_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
+    log_filepath = os.path.join(LOGS_DIR, log_filename)
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        handlers=[
+            logging.FileHandler(log_filepath),
+            logging.StreamHandler()  # Also print to console
+        ]
+    )
+    return logging.getLogger(__name__)
+
+
+logger = setup_logging()
 
 def create_test_user(roles=None):
     """Helper function to create a test user with specified roles"""
@@ -73,6 +96,81 @@ str_variable_dict['user3'] = user3.get('name')
 str_variable_dict['user4'] = user4.get('name')
 str_variable_dict['user5'] = user5.get('name')
 str_variable_dict['auditor_user'] = auditor_user.get('name')
+
+
+
+@pytest.fixture(scope="session")
+def setup_for_import_export_policies():
+    # create source hbase service
+    request_url = base_url + '/plugins/services'
+    request_data = get_request_data('test_create_hbase_service.json', str_variable_dict, test_data_path)
+
+
+    source_service_name = request_data['name']
+    resp = requests.post(request_url, verify=False, auth=admin_auth, headers=headers, data=json.dumps(request_data))
+
+    # create destination hbase service
+    request_data = get_request_data('test_create_hbase_service.json', str_variable_dict, test_data_path)
+
+    resp = requests.post(request_url, verify=False, auth=admin_auth, headers=headers, data=json.dumps(request_data))
+    destination_service_name = request_data['name']
+
+    # create a policy in source service
+    request_url = base_url + '/plugins/policies'
+    request_data = get_request_data('test_create_hbase_policy.json', str_variable_dict, test_data_path)
+    request_data['service'] = source_service_name
+    policy_name_in_source_service = request_data['name']
+    resp = requests.post(request_url, verify=False, auth=admin_auth, headers=headers, data=json.dumps(request_data))
+    request_data['service'] = destination_service_name
+    # policies in  source and destination have the same resource path and name
+    policy_name_in_destination_service = request_data['name']
+    resp = requests.post(request_url, verify=False, auth=admin_auth, headers=headers, data=json.dumps(request_data))
+    # in the setup the path of both source policy and destination policy is same also the name is same
+    destination_pre_existing_policy_id = resp.json().get('id')
+
+    request_url = base_url + '/plugins/policies/exportJson?serviceName={}&checkPoliciesExists=true'.format(
+        source_service_name)
+
+    local_header = {
+        'Accept': '*/*',
+        'Content-Type': 'application/json',
+        'X-XSRF-HEADER': 'valid'
+    }
+
+    exported_policies_from_source = requests.get(request_url, verify=False, auth=admin_auth, headers=local_header)
+    exported_policies_from_source = exported_policies_from_source.json()
+
+    assert resp.status_code == 200, "Export failed during setup"
+
+    # Return the actual JSON content
+
+    return {
+        "source_service_name": source_service_name,
+        "destination_service_name": destination_service_name,
+        "exported_policies_from_source": exported_policies_from_source,
+        "policy_name_in_source_service": policy_name_in_source_service,
+        "policy_name_in_destination_service": policy_name_in_destination_service,
+    }
+
+
+
+
+@pytest.fixture(scope="session")
+def create_policy_for_test():
+    request_url = base_url + '/plugins/policies'
+    request_data = get_request_data('test_create_policy.json', str_variable_dict, test_data_path)
+
+    resp = requests.post(request_url, verify=False, auth=admin_auth, headers=headers, data=json.dumps(request_data))
+    assert resp.status_code == 200, "Failed to create policy"
+
+    policy_json = resp.json()
+    policy_id = policy_json.get('id')
+
+    return{
+        "policy_id": policy_id,
+        "policy_json": policy_json
+    }
+
 
 
 

@@ -630,6 +630,21 @@ def group_exists_by_name(group_name, ranger_admin_config, base_url, headers, aut
     )
     return resp.status_code == 200
 
+def user_exists_by_name(user_name, ranger_admin_config, base_url, headers, auth=None):
+    RANGER_CONFIG = {"base_url": base_url, "auth": ranger_admin_config, "headers": headers}
+    if RANGER_CONFIG is None:
+        raise RuntimeError("RANGER_CONFIG not initialized")
+
+    if auth is None:
+        auth = RANGER_CONFIG["auth"]
+
+    resp = requests.get(
+            f"{base_url}/xusers/users/userName/{user_name}",
+            auth = ranger_admin_config,
+            headers=headers,
+    )
+    return resp.status_code == 200
+
 def assign_role_to_group(group_name, role, ranger_admin_config, base_url, headers):
     RANGER_CONFIG = {"base_url": base_url, "auth": ranger_admin_config, "headers": headers}
     if RANGER_CONFIG is None:
@@ -659,3 +674,41 @@ def assign_role_to_group(group_name, role, ranger_admin_config, base_url, header
     
     print("Assign Role to Group Response:", response.status_code)
     assert response.status_code == 200, f"Failed to assign role to group"
+
+
+def create_groupuser(group_name, user_id, ranger_admin_config, base_url, headers):
+    payload = {
+        "name": group_name,
+        "userId": user_id
+    }
+    response = requests.post(
+        f"{base_url}/xusers/groupusers",
+        json=payload,
+        auth=ranger_admin_config,
+        headers=headers
+    )
+    print("Create GroupUser Response:", response.status_code, response.text)
+    assert response.status_code == 200, f"Failed to create groupuser: {response.text}"
+    return response.json()
+
+
+def groupuser_exists(gu_id, ranger_admin_config, base_url, headers):
+    response = requests.get(
+        f"{base_url}/xusers/groupusers/{gu_id}",
+        auth=ranger_admin_config,
+        headers=headers
+    )
+    if response.status_code == 200:
+        return True
+    print(f"Failed to fetch groupuser for group id {gu_id}: {response.status_code} ")
+    return False
+
+
+def delete_groupuser(gu_id, ranger_admin_config, base_url, headers):
+    groupuser_exists(gu_id, ranger_admin_config, base_url, headers)  # Check existence before deletion
+    response = requests.delete(
+        f"{base_url}/xusers/groupusers/{gu_id}",
+        auth=ranger_admin_config,
+        headers={**headers, "X-Requested-By": "ranger"}
+    )
+    return response.status_code in (200, 204)

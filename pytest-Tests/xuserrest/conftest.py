@@ -28,14 +28,9 @@ import random
 import string
 import uuid
 import pytest
-
 import requests
-
 import time
 import os
-
-import pytest
-import requests
 
 # Module-level constants — always available globally, even with pytest -n auto
 CREDENTIALS = ("admin", "rangerR0cks!")
@@ -441,6 +436,7 @@ def temp_group(ranger_config):
         requests.delete(
             f"{ranger_config['base_url']}/xusers/groups/{gid}",
             auth=ranger_config["auth"],
+            params={"forceDelete": "true"},
             headers={
                 **ranger_config["headers"],
                 "X-Requested-By": "ranger"

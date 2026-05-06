@@ -23,22 +23,14 @@
 # documentation.
 
 
-from urllib import request, response
+from urllib import *
 import pytest
 import requests
 import json
 from datetime import datetime
-#from utility.utils import fetch_logs
 import random
 import string
-from xuserrest.utility.utils import (
-    assert_response,
-    validate_secure_user_schema,
-    user_exists,
-    delete_user,
-    validate_external_user_schema,
-    init_configs
-)
+from xuserrest.utility.utils import *
 
 BIGINT_MIN = -9223372036854775808
 BIGINT_MAX =  9223372036854775807

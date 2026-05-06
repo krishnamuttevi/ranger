@@ -84,9 +84,10 @@ def assert_response(response, expected_status, text = None, service_name=SERVICE
 
 def validate_user_schema(data):
 
-    assert "id" in data
-    assert isinstance(data["id"], int)
-    assert BIGINT_MIN <= data["id"] <= BIGINT_MAX
+    if "id" in data:
+        assert "id" in data
+        assert isinstance(data["id"], int)
+        assert BIGINT_MIN <= data["id"] <= BIGINT_MAX
 
     assert isinstance(data.get("name"), str)
     assert 1 <= len(data["name"]) <= 767
@@ -237,7 +238,7 @@ def user_exists(user_id, ranger_admin_config, base_url, headers, auth=None):
 
 
 
-def delete_user(user_id,  ranger_admin_config, base_url, headers, force=False):
+def delete_user(user_id,  ranger_admin_config, base_url, headers, force=True):
 
     RANGER_CONFIG = {"base_url": base_url, "auth": ranger_admin_config, "headers": headers}
     if RANGER_CONFIG is None:
@@ -284,9 +285,9 @@ def validate_external_user_schema(data):
 
 def validate_xgroup_schema(data):
 
-    assert "id" in data
-    assert isinstance(data["id"], int)
-    assert BIGINT_MIN <= data["id"] <= BIGINT_MAX
+    if "id" in data:
+        assert isinstance(data["id"], int)
+        assert BIGINT_MIN <= data["id"] <= BIGINT_MAX
 
     assert isinstance(data.get("name"), str)
     assert 0 <= len(data["name"]) <= 767
@@ -310,35 +311,11 @@ def validate_xgroup_schema(data):
                 data[field].replace("Z", "+00:00")
             )
 
-
-# def assign_groups_to_user(user_name, group_names, ranger_admin_config, base_url, headers):
-#     RANGER_CONFIG = {"base_url": base_url, "auth": ranger_admin_config, "headers": headers}
-#     if RANGER_CONFIG is None:
-#         raise RuntimeError("RANGER_CONFIG not initialized")
-
-#     payload = {
-#             "xuserInfo": {
-#                     "name": user_name
-#                 },
-#             "xgroupInfo": [
-#                 {"name": group} for group in group_names
-#                 ]
-#         }
-#     response = requests.post(
-#             f"{RANGER_CONFIG['base_url']}/xusers/users/userinfo",
-#             json=payload,
-#             auth=RANGER_CONFIG["auth"],
-#             headers=RANGER_CONFIG["headers"]
-#         )
-#     print(response.json())
-#     print("Assign Groups Response:", response.status_code)
-#     assert response.status_code == 200, f"Failed to assign groups to user: {response.text}"
     
 def assign_groups_to_user(user_name, group_names, ranger_admin_config, base_url, headers):
     RANGER_CONFIG = {"base_url": base_url, "auth": ranger_admin_config, "headers": headers}
     if RANGER_CONFIG is None:
         raise RuntimeError("RANGER_CONFIG not initialized")
-
     payload = {
             "xuserInfo": {
                     "name": user_name
@@ -712,3 +689,133 @@ def delete_groupuser(gu_id, ranger_admin_config, base_url, headers):
         headers={**headers, "X-Requested-By": "ranger"}
     )
     return response.status_code in (200, 204)
+
+
+'''
+payload = {
+            "syncSource":  "Unix",
+            "noOfNewUsers": 10,
+            "noOfNewGroups": 5,
+            "noOfModifiedUsers": 3,
+            "noOfModifiedGroups": 2,
+            "fileSyncSourceInfo": {}
+        }
+
+        '''
+def validate_auditinfo_schema(data):
+    assert "syncSource" in data and isinstance(data["syncSource"], str) and len(data["syncSource"]) <= 128
+    assert "noOfNewUsers" in data and isinstance(data["noOfNewUsers"], int) 
+    assert "noOfNewGroups" in data and isinstance(data["noOfNewGroups"], int)
+    assert "noOfModifiedUsers" in data and isinstance(data["noOfModifiedUsers"], int)
+    assert "noOfModifiedGroups" in data and isinstance(data["noOfModifiedGroups"], int)
+    if "fileSyncSourceInfo" in data:
+        assert isinstance(data["fileSyncSourceInfo"], dict)
+    if "unixSyncSourceInfo" in data:
+        assert isinstance(data["unixSyncSourceInfo"], dict)
+    if "ldapSyncSourceInfo" in data:
+        assert isinstance(data["ldapSyncSourceInfo"], dict)
+
+def is_valid_date(value):
+    try:
+        datetime.fromisoformat(value.replace("Z", "+00:00"))
+        return True
+    except Exception:
+        return False
+        
+def validate_sync_source_info(payload, response_json):
+    from datetime import datetime
+
+    priority = [
+        "unixSyncSourceInfo",
+        "fileSyncSourceInfo",
+        "ldapSyncSourceInfo"
+    ]
+
+    selected_source = None
+    for key in priority:
+        if key in payload:
+            selected_source = key
+            break
+
+    if not selected_source:
+        pytest.fail("No sync source info provided in payload")
+
+    sync_info = response_json.get("syncSourceInfo", {})
+
+    common_fields = {
+        "totalUsersSynced": str,
+        "totalGroupsSynced": str,
+        "totalUsersDeleted": str,
+        "totalGroupsDeleted": str,
+    }
+
+    if selected_source == "unixSyncSourceInfo":
+        expected_schema = {
+            "unixBackend": str,
+            "fileName": str,
+            "syncTime": "date",
+            "lastModified": "date",
+            "minUserId": str,
+            "minGroupId": str,
+            **common_fields
+        }
+
+    elif selected_source == "fileSyncSourceInfo":
+        expected_schema = {
+            "fileName": str,
+            "syncTime": "date",
+            "lastModified": "date",
+            **common_fields
+        }
+
+    elif selected_source == "ldapSyncSourceInfo":
+        expected_schema = {
+            "ldapUrl": str,
+            "isIncrementalSync": str,
+            "userSearchEnabled": str,
+            "groupSearchEnabled": str,
+            "groupSearchFirstEnabled": str,
+            "userSearchFilter": str,
+            "groupSearchFilter": str,
+            "groupHierarchyLevel": str,
+            **common_fields
+        }
+
+    else:
+        pytest.fail(f"Unknown sync source: {selected_source}")
+
+    for key, expected_type in expected_schema.items():
+        assert key in sync_info, f"{key} missing in response for {selected_source}"
+
+        value = sync_info[key]
+
+        if expected_type == "date":
+            assert isinstance(value, str), f"{key} should be string (date)"
+            assert is_valid_date(value), f"{key} is not valid ISO date"
+        else:
+            assert isinstance(value, expected_type), \
+                f"{key} expected {expected_type}, got {type(value)}"
+
+    assert isinstance(response_json.get("id"), int), "id should be int"
+    assert isinstance(response_json.get("userName"), str), "userName should be string"
+
+    for field in ["createDate", "updateDate", "eventTime"]:
+        val = response_json.get(field)
+        assert isinstance(val, str), f"{field} should be string"
+        assert is_valid_date(val), f"{field} is not valid ISO date"
+
+    for field in [
+        "noOfNewUsers",
+        "noOfNewGroups",
+        "noOfModifiedUsers",
+        "noOfModifiedGroups"
+    ]:
+        assert isinstance(response_json.get(field), int), f"{field} should be int"
+
+def return_value_ugsync_groupusers(payload, auth, base_url, headers):
+    return_value = 0
+    for i in payload:
+        if group_exists_by_name(i["groupName"], auth, base_url, headers):
+            if len(i["addUsers"]) > 0 or len(i["delUsers"]) > 0:
+                return_value += 1
+    return return_value

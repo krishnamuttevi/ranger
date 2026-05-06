@@ -25,24 +25,14 @@
 
 
 
-import string
 
-from xuserrest.utility.utils import (
-    assert_response,
-    validate_secure_user_schema,
-    validate_user_schema,
-    user_exists,
-    delete_user,
-    validate_external_user_schema,
-    init_configs,
-    validate_xgroup_schema,
-    assign_groups_to_user
-)
+from urllib import *
+from xuserrest.utility.utils import *
 import uuid
+import string
 import pytest
 import requests
 from datetime import datetime
-#from utility.utils import fetch_logs
 import random
 
 @pytest.mark.usefixtures("ranger_config", "ranger_key_admin_config")

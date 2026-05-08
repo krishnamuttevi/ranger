@@ -5,7 +5,7 @@ from  Utility.main import get_request_data ,base_url,get_updated_request_data ,g
 from requests.auth import HTTPBasicAuth
 import time
 import os
-from conftest import user1, user2,user3,user4,user5
+
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__)) # Gets Tests_Ranger root
 test_data_path = os.path.join(BASE_DIR,"Utility", "test_jsons")
@@ -18,10 +18,7 @@ variables_data_path = data_folder_path
 
 def test_get_policies_count_by_admin():
     request_url = base_url + '/plugins/policies/count'
-    # logger.info("The request url is :- %s", request_url)
     resp = requests.get(request_url, verify=False, auth=admin_auth, headers=headers)
-    # logger.info("The resp status code is :- %s", resp.status_code)
-    # logger.info("The resp content is :- %s", resp.content)
     assert resp.status_code == 200, "Expected status code not returned"
 
 def test_get_policies_count_by_different_roles():
@@ -32,14 +29,9 @@ def test_get_policies_count_by_different_roles():
     assert resp2.status_code == 200, "Expected status code not returned"
     assert int(resp1.text.strip())>=int (resp2.text.strip()), "Different roles do not have expected view of policies count"
 
-# @pytest.mark.L1
-# @TaskReporter.report_test()
 def test_get_policies_by_admin():
     request_url = base_url + '/plugins/policies'
-    # logger.info("The request url is :- %s", request_url)
     resp = requests.get(request_url, verify=False, auth=admin_auth, headers=headers)
-    # logger.info("The resp status code is :- %s", resp.status_code)
-    # logger.info("The resp content is :- %s", resp.content)
     assert resp.status_code == 200, "Expected status code not returned"
 
 def test_different_roles_has_different_view_of_policies():
@@ -57,57 +49,62 @@ def test_different_roles_has_different_view_of_policies():
     assert len(policies_admin) >= len(policies_keyadmin) , "Different roles do not have expected view of policies"
     assert len(policies_admin) >= len(policies_user2) , "Different roles do not have expected view of policies"
 
-# def test_query_parameters_in_get_policies_api():
-#     request_url=base_url+'plugins/policies?startIndex=1&maxRows=50&sortBy=id&sortType=desc'
-#     resp = requests.get(request_url, verify=False, auth=admin_auth, headers=headers)
-#
-#     request_url=base_url+'plugins/policies?startIndex=1&maxRows=50&sortBy=id&sortType=asc'
-#     resp1 = requests.get(request_url, verify=False, auth=admin_auth, headers=headers)
-#     assert resp.get('policies',[])[0].get('id')>=resp1.get('policies',[])[0].get('id') , "Sorting not working as expected"
-#     request_url = base_url + 'plugins/policies?startIndex=0&maxRows=50&sortBy=id&sortType=asc'
-#     resp3= requests.get(request_url, verify=False, auth=admin_auth, headers=headers)
-#     assert resp3.get('policies',[])[0].get('id')<=resp1.get('policies',[])[0].get('id')
 
-# @TaskReporter.report_test()
+def test_query_parameters_in_get_policies_api():
+    request_url = base_url + '/plugins/policies?startIndex=1&maxRows=50&sortBy=id&sortType=desc'
+    resp = requests.get(request_url, verify=False, auth=admin_auth, headers=headers)
+
+    request_url = base_url + '/plugins/policies?startIndex=1&maxRows=50&sortBy=id&sortType=asc'
+    resp1 = requests.get(request_url, verify=False, auth=admin_auth, headers=headers)
+
+    assert resp.status_code in [200,204], f" first get request failed with status {resp.status_code}: {resp.text}"
+    assert resp1.status_code in [200,204] ,f"second get request failed with status {resp1.status_code}: {resp1.text}"
+
+    resp_json = resp.json()
+    resp1_json = resp1.json()
+
+    assert 'policies' in resp_json and len(resp_json['policies']) > 0, "No policies in desc response"
+    assert 'policies' in resp1_json and len(resp1_json['policies']) > 0, "No policies in asc response"
+
+    assert resp_json['policies'][0]['id'] >= resp1_json['policies'][0]['id'], "Sorting not working as expected"
+
+    request_url = base_url + '/plugins/policies?startIndex=0&maxRows=50&sortBy=id&sortType=asc'
+    resp3 = requests.get(request_url, verify=False, auth=admin_auth, headers=headers)
+    assert resp3.status_code == 200, f"Third get  request failed with status {resp3.status_code}: {resp3.text}"
+
+    resp3_json = resp3.json()
+    assert 'policies' in resp3_json and len(resp3_json['policies']) > 0, "No policies in third response"
+
+    assert resp3_json['policies'][0]['id'] <= resp1_json['policies'][0]['id'], "Third comparison failed"
+
+
 def test_get_policies_by_auditor():
     request_url = base_url + '/plugins/policies'
-    # logger.info("The request url is :- %s", request_url)
     resp = requests.get(request_url, verify=False, auth=HTTPBasicAuth(str_variable_dict['auditor_user'],'Test@12345'), headers=headers)
-    # logger.info("The resp status code is :- %s", resp.status_code)
-    # logger.info("The resp content is :- %s", resp.content)
     assert resp.status_code == 200, "Expected status code not returned"
 
-# @TaskReporter.report_test()
+
 def test_get_policies_by_keyadmin():
     request_url = base_url + '/plugins/policies'
-    # logger.info("The request url is :- %s", request_url)
     resp = requests.get(request_url, verify=False, auth=keyadmin_auth, headers=headers)
-    # logger.info("The resp status code is :- %s", resp.status_code)
-    # logger.info("The resp content is :- %s", resp.content)
     assert resp.status_code == 200, "Expected status code not returned"
 
 def test_get_policies_by_ROLE_USER():
     request_url = base_url + '/plugins/policies'
-    # logger.info("The request url is :- %s", request_url)
     resp = requests.get(request_url, verify=False, auth=HTTPBasicAuth(str_variable_dict['user3'],'Test@12345'), headers=headers)
-    # logger.info("The resp status code is :- %s", resp.status_code)
-    # logger.info("The resp content is :- %s", resp.content)
     assert resp.status_code == 200, "Expected status code not returned"
 
 
-def test_create_policy_by_admin():
+def test_create_policy_by_admin(log):
     request_url = base_url + '/plugins/policies'
     request_data = get_request_data('test_create_policy.json', str_variable_dict, test_data_path)
-
-    # logger.info("The request url is :- %s", request_url)
-    # logger.info("The request data is :- %s", request_data)
-    resp = requests.post(request_url, verify=False, auth=admin_auth, headers=headers, data=json.dumps(request_data))
-    resp_json = resp.json()
+    resp1= requests.post(request_url, verify=False, auth=admin_auth, headers=headers, data=json.dumps(request_data))
+    resp_json = resp1.json()
     resp_id = resp_json.get('id')
-    # logger.infon().get('id')
-    # logger.in("The resp content is :- %s", resp.content)
-    assert resp.status_code == 200, "Expected status code not returned"
+    assert resp1.status_code == 200, "Expected status code not returned"
     assert request_data.get('name') == resp_json.get('name'), "Expected name not returned in response , policy with random different name created instead"
+    if resp1.status_code == 200:
+        log.info("Policy created with id :- %s", resp_id)
 
     """
     Test Same policy should not be created again 
@@ -130,71 +127,63 @@ def test_create_policy_by_admin():
     request_data['name'] = original_name
     resp= requests.post(request_url, verify=False, auth=admin_auth, headers=headers, data=json.dumps(request_data))
     assert resp.status_code == 400, "Same policy with same name and different resource  created again"
+    if resp1.status_code == 200:
+        delete_url = base_url + f'/plugins/policies/{resp_id}'
+        delete_resp = requests.delete(delete_url, verify=False, auth=admin_auth, headers=headers)
+        if delete_resp.status_code in (200,201,204):
+            log.info("Delete policy with id :- %s", resp_id)
+        else:
+            log.error("Failed to delete policy with id :- %s", resp_id, "Response code :- %s", delete_resp.status_code, "Response content :- %s", delete_resp.content)
+
 
 def test_create_policy_by_auditor():
     request_url = base_url + '/plugins/policies'
     request_data = get_request_data('test_create_policy.json', str_variable_dict, test_data_path)
-    # logger.info("The request url is :- %s", request_url)
-    # logger.info("The request data is :- %s", request_data)
     resp = requests.post(request_url, verify=False, auth=HTTPBasicAuth(str_variable_dict['auditor_user'],"Test@12345"), headers=headers, data=json.dumps(request_data))
-    # logger.info("The resp status code is :- %s", resp.status_code)
-    # logger.info("The resp content is :- %s", resp.content)
     assert resp.status_code == 403, "Expected status code not returned"
 
 
 def test_create_policy_by_keyadmin():
     request_url = base_url + '/plugins/policies'
     request_data = get_request_data('test_create_policy.json', str_variable_dict, test_data_path)
-    # logger.info("The request url is :- %s", request_url)
-    # logger.info("The request data is :- %s", request_data)
     resp = requests.post(request_url, verify=False, auth=keyadmin_auth, headers=headers, data=json.dumps(request_data))
-    # logger.info("The resp status code is :- %s", resp.status_code)
-    # logger.info("The resp content is :- %s", resp.content)
     assert resp.status_code == 400, "Expected status code not returned"
 
 
-
-# @TaskReporter.report_test()
 def test_create_policy_by_ROLE_USER():
     request_url = base_url + '/plugins/policies'
     request_data = get_request_data('test_create_policy.json', str_variable_dict, test_data_path)
-    # logger.info("The request url is :- %s", request_url)
-    # logger.info("The request data is :- %s", request_data)
     resp = requests.post(request_url, verify=False, auth=HTTPBasicAuth(str_variable_dict['user3'],'Test@12345'), headers=headers, data=json.dumps(request_data))
-    # logger.info("The resp status code is :- %s", resp.status_code)
-    # logger.info("The resp content is :- %s", resp.content)
     assert resp.status_code == 403, "Expected status code not returned,user with ROLE_USER should not be able to create policy"
 
-
-# @pytest.mark.L1
-# @TaskReporter.report_test()
-def test_create_policies_using_apply_by_admin():
+def test_create_policies_using_apply_by_admin(log):
     request_url = base_url + '/plugins/policies/apply'
     request_data = get_request_data('test_create_policies_using_apply.json', str_variable_dict, test_data_path)
-    # logger.info("The request url is :- %s", request_url)
-    # logger.info("The request data is :- %s", request_data)
     resp = requests.post(request_url, verify=False, auth=admin_auth, headers=headers, data=json.dumps(request_data))
-    # logger.info("The resp status code is :- %s", resp.status_code)
-    # logger.info("The resp content is :- %s", resp.content)
     assert resp.status_code == 200, "Expected status code not returned"
+    if resp.status_code == 200:
+        log.info("Create policy with id :- %s", request_data['id'])
+        delete_url = base_url + f'/plugins/policies/{request_data["id"]}'
+        delete_resp = requests.delete(delete_url, verify=False, auth=admin_auth, headers=headers)
+        if delete_resp.status_code in (200,201,204):
+            log.info("Delete policy with id :- %s", request_data['id'])
+        else:
+            log.error("Failed to delete policy with id :- %s", request_data['id'], "Response code :- %s", delete_resp.status_code, "Response content :- %s", delete_resp.content)
 
 
-
-# # @pytest.mark.L1
-# # @TaskReporter.report_test()
-def test_edit_policy_using_id_by_admin():
+def test_edit_policy_using_id_by_admin(log):
     request_url = base_url + '/plugins/policies/{policy_1_id}'
     request_url = request_url.format(**str_variable_dict)
-
     request_data = variable_dict["policy_1"]
     fields_to_update = {"description": "Modified description"}
     request_data = get_updated_request_data(request_data=request_data, fields_to_update=fields_to_update)
-    # logger.info("The request url is :- %s", request_url)
-    # logger.info("The request data is :- %s", request_data)
     resp = requests.put(request_url, verify=False, auth=admin_auth, headers=headers, data=json.dumps(request_data))
-    # logger.info("The resp status code is :- %s", resp.status_code)
-    # logger.info("The resp content is :- %s", resp.content)
     assert resp.status_code == 200, "Expected status code not returned"
+    if resp.status_code == 200:
+        log.info("Policy with id :- %s updated successfully", str_variable_dict['policy_1_id'])
+    else:
+        log.error("Failed to update policy with id :- %s", str_variable_dict['policy_1_id'], "Response code :- %s", resp.status_code, "Response content :- %s", resp.content)
+
 
 def test_export_policy(setup_for_import_export_policies):
     """
@@ -401,70 +390,42 @@ def test_implement_policy_with_same_name_and_different_resources(setup_for_impor
 def test_get_policies_cache_reset_by_auditor():
     request_url = base_url + '/plugins/policies/cache/reset?serviceName={service_1_name}'
     request_url = request_url.format(**str_variable_dict)
-
-    # logger.info("The request url is :- %s", request_url)
     resp = requests.get(request_url, verify=False, auth=HTTPBasicAuth(str_variable_dict['auditor_user'],"Test@12345"), headers=headers)
-    # logger.info("The resp status code is :- %s", resp.status_code)
-    # logger.info("The resp content is :- %s", resp.content)
     assert resp.status_code == 400, "Expected status code not returned ,auditor should not be able to reset cache for policies"
 
 def test_get_policies_cache_reset_all_by_auditor():
     request_url = base_url + '/plugins/policies/cache/reset-all'
-    # logger.info("The request url is :- %s", request_url)
     resp = requests.get(request_url, verify=False, auth=HTTPBasicAuth(str_variable_dict['auditor_user'],"Test@12345"), headers=headers)
-    # logger.info("The resp status code is :- %s", resp.status_code)
-    # logger.info("The resp content is :- %s", resp.content)
     assert resp.status_code == 400, "Expected status code not returned ,auditor should not be able to reset cache for policies"
-
-
 
 
 def test_get_cache_reset_using_invalid_service_name():
     invalid_service_name = return_random_str()
     request_url = base_url + f'/plugins/policies/cache/reset?serviceName={invalid_service_name}'
-    # logger.info("The request url is :- %s", request_url)
-
     resp = requests.get(request_url, verify=False, auth=admin_auth, headers=headers)
-    # logger.info("The resp status code is :- %s", resp.status_code)
-    # logger.info("The resp content is :- %s", resp.content)
     assert resp.status_code == 400, "Expected status code not returned, cache reset should not happen with invalid service name"
 
 def test_get_policies_cache_reset_by_keyadmin():
     request_url = base_url + '/plugins/policies/cache/reset?serviceName={service_1_name}'
     request_url = request_url.format(**str_variable_dict)
-
-    # logger.info("The request url is :- %s", request_url)
     resp = requests.get(request_url, verify=False, auth=keyadmin_auth, headers=headers)
-    # logger.info("The resp status code is :- %s", resp.status_code)
-    # logger.info("The resp content is :- %s", resp.content)
     assert resp.status_code == 400, "Expected status code not returned"
 
 def test_get_policies_cache_reset_by_admin():
     request_url = base_url + '/plugins/policies/cache/reset?serviceName={service_1_name}'
     request_url = request_url.format(**str_variable_dict)
-
-    # logger.info("The request url is :- %s", request_url)
     resp = requests.get(request_url, verify=False, auth=admin_auth, headers=headers)
-    # logger.info("The resp status code is :- %s", resp.status_code)
-    # logger.info("The resp content is :- %s", resp.content)
     assert resp.status_code == 200, "Expected status code not returned"
 
 def test_get_policies_cache_reset_by_ROLE_USER():
     request_url = base_url + '/plugins/policies/cache/reset?serviceName={service_1_name}'
     request_url = request_url.format(**str_variable_dict)
-
-    # logger.info("The request url is :- %s", request_url)
     resp = requests.get(request_url, verify=False, auth=HTTPBasicAuth(str_variable_dict['user2'],"Test@12345"), headers=headers)
-    # logger.info("The resp status code is :- %s", resp.status_code)
-    # logger.info("The resp content is :- %s", resp.content)
     assert resp.status_code == 400, "Expected status code not returned"
 
 def test_get_policies_cache_reset_all_by_ROLE_USER():
     request_url = base_url + '/plugins/policies/cache/reset-all'
-    # logger.info("The request url is :- %s", request_url)
     resp = requests.get(request_url, verify=False, auth=HTTPBasicAuth(str_variable_dict['user2'],"Test@12345"), headers=headers)
-    # logger.info("The resp status code is :- %s", resp.status_code)
-    # logger.info("The resp content is :- %s", resp.content)
     assert resp.status_code == 400, "Expected status code not returned"
 
 def test_service_admins_allowed_to_call_cache_reset():
@@ -489,12 +450,17 @@ def test_service_admins_allowed_to_call_cache_reset():
     assert resp.status_code == 200, "Expected status code not returned , service admin should be able to reset cache for policies of that service"
 
 
-def test_download_policies_by_admin():
+def test_download_policies_by_admin(log):
     request_url = base_url + '/plugins/policies/download/{service_1_name}'
     request_url = request_url.format(**str_variable_dict)
+    # download called for the first time ,for the first time the status code should be 200
     resp = requests.get(request_url, verify=False, auth=admin_auth, headers=headers)
-    # download called for the first time , for next time since no update in policies it should return status code 304
+    version_number =resp.json()['policyVersion']
+    request_url=request_url+f'?lastKnownVersion={version_number}'
+
+    # for next time(second download ) since no update in policies it should return status code 304
     resp1 = requests.get(request_url, verify=False, auth=admin_auth, headers=headers)
+
     assert resp.status_code == 200 and resp1.status_code == 304 , "Expected status code not returned , since no update in policies after first download second download should return 304"
     # create a policy to make changes in service and then try downloading again , it should return 200 since there is update in policies
     request_url_for_policy = base_url + '/plugins/policies'
@@ -502,8 +468,29 @@ def test_download_policies_by_admin():
     request_data_for_policy['service'] = str_variable_dict['service_1_name']
     resp_for_policy = requests.post(request_url_for_policy, verify=False, auth=admin_auth, headers=headers, data=json.dumps(request_data_for_policy))
     assert resp_for_policy.status_code == 200, "Expected status code not returned while creating policy"
+
+    # Add logging for policy creation
+    if resp_for_policy.status_code == 200:
+        policy_json = resp_for_policy.json()
+        policy_id = policy_json.get('id')
+        log.info("Policy created with id: %s for download test", policy_id)
+    else:
+        log.error("Failed to create policy for download test. Response code: %s, Response content: %s", resp_for_policy.status_code, resp_for_policy.content)
+
     resp2 = requests.get(request_url, verify=False, auth=admin_auth, headers=headers)
     assert resp2.status_code == 200, "Expected status code not returned , since there is update in policies after creating new policy download should return 200"
+
+    # Cleanup: Delete the created policy
+    if resp_for_policy.status_code == 200:
+        policy_json = resp_for_policy.json()
+        policy_id = policy_json.get('id')
+        delete_url = base_url + f'/plugins/policies/{policy_id}'
+        delete_resp = requests.delete(delete_url, verify=False, auth=admin_auth, headers=headers)
+        if delete_resp.status_code in [200, 204]:
+            log.info("Policy with id %s deleted successfully after download test", policy_id)
+        else:
+            log.error("Failed to delete policy with id %s after download test. Response code: %s, Response content: %s", policy_id, delete_resp.status_code, delete_resp.content)
+
 
 
 def test_get_policy_from_event_time_by_admin(create_policy_for_test):
@@ -635,7 +622,7 @@ def test_get_policy_from_event_time_by_auditor(create_policy_for_test):
     assert resp.status_code == 200, "Auditor should be able to retrieve policy from event time"
 
 
-def test_get_policy_from_event_time_by_unauthorized_user():
+def test_get_policy_from_event_time_by_unauthorized_user(log):
     """
     Test validates that users without proper permissions cannot retrieve policies by event time.
     Only admin, auditor, and authorized users should have access to policy history.
@@ -645,7 +632,12 @@ def test_get_policy_from_event_time_by_unauthorized_user():
     request_data = get_request_data('test_create_policy.json', str_variable_dict, test_data_path)
 
     resp = requests.post(request_url, verify=False, auth=admin_auth, headers=headers, data=json.dumps(request_data))
-    assert resp.status_code == 200, "Failed to create policy"
+    status_code_post=resp.status_code
+    assert resp.status_code in [200,204], "Failed to create policy"
+    if resp.status_code in [200,204]:
+        log.info("Policy created with id :- %s", resp.json().get('id'))
+    else:
+        log.error("Failed to create policy, Response code :- %s, Response content :- %s", resp.status_code, resp.content)
 
     policy_json = resp.json()
     policy_id = policy_json.get('id')
@@ -657,6 +649,14 @@ def test_get_policy_from_event_time_by_unauthorized_user():
     resp = requests.get(event_time_url, verify=False, auth=HTTPBasicAuth(str_variable_dict['user3'], 'Test@12345'),
                         headers=headers)
     assert resp.status_code in [403, 404], "Unauthorized user should not be able to retrieve policy from event time"
+    if status_code_post in [200,204]:
+        # Clean up by deleting the created policy
+        delete_url = base_url + f'/plugins/policies/{policy_id}'
+        delete_resp = requests.delete(delete_url, verify=False, auth=admin_auth, headers=headers)
+        if delete_resp.status_code in (200, 204):
+            log.info("Deleted policy with id :- %s", policy_id)
+        else:
+            log.error("Failed to delete policy with id :- %s, Response code :- %s, Response content :- %s", policy_id, delete_resp.status_code, delete_resp.content)
 
 
 def test_get_policy_by_guid_not_passed():
@@ -857,12 +857,380 @@ def test_get_policy_by_guid_deleted_policy():
     get_resp = requests.get(get_url, verify=False, auth=admin_auth, headers=headers)
     assert get_resp.status_code == 404, "API should return 404 for deleted policy GUID"
 
+def test_get_policies_for_resource_by_admin():
+    """
+    Test retrieves policies matching specific resource using service definition name.
+    Admin should be able to retrieve all matching policies for the resource.
+    """
+    request_url=base_url+'/plugins/policies/hdfs/for-resource?serviceName=dev_hdfs&resource:path=/'
+    resp = requests.get(request_url, verify=False, auth=admin_auth, headers=headers)
+    assert resp.status_code == 200, "Expected status code not returned"
+    policies=resp.json()
+    assert len(policies)>0, "No policies found for the resource, while expected at least one policy should be there for the resource"
+
+def test_get_policies_for_non_existing_resource_by_admin():
+    """
+    since no path is mentioned it should give status code 200 with empty policies list in response
+    """
+    request_url=base_url+'/plugins/policies/hdfs/for-resource?serviceName=dev_hdfs&resource:path='
+    resp = requests.get(request_url, verify=False, auth=admin_auth, headers=headers)
+    assert resp.status_code == 200, "Expected status code not returned"
+    policies=resp.json()
+    assert len(policies)==0, "No policies found for the resource, while expected at least one policy should be there for the resource"
+
+
+def test_get_policies_for_resource_invalid_service_def():
+    """
+    Test validates that API returns error for invalid service definition name.
+    """
+    invalid_service_def = 'invalid_service_def_' + return_random_str()
+
+    request_url = base_url + f'/plugins/policies/{invalid_service_def}/for-resource?serviceName=dev_hdfs&path=/'
+
+    resp = requests.get(request_url, verify=False, auth=admin_auth, headers=headers)
+    assert resp.status_code in [400, 404], "API should return error for invalid service definition"
+
+
+def test_get_policies_for_resource_with_matching_policy(create_policy_for_test):
+    """
+    Test retrieves policies that match a specific resource path.
+    Should return the policy created in the fixture.
+    """
+    policy_json = create_policy_for_test['policy_json']
+    service_name = policy_json['service']
+    service_def_name = 'hdfs'
+
+    # Get the resource path from the created policy
+    resource_path = list(policy_json['resources'].values())[0]['values'][0]
+
+    request_url = base_url + f'/plugins/policies/{service_def_name}/for-resource?serviceName={service_name}&path={resource_path}'
+
+    resp = requests.get(request_url, verify=False, auth=admin_auth, headers=headers)
+    assert resp.status_code == 200, "Expected status code 200"
+
+    policies = resp.json()
+    policy_ids = [p['id'] for p in policies]
+    assert policy_json['id'] in policy_ids, "Created policy should be in the matching policies list"
+
+
+def test_get_policy_for_version_number_success(create_policy_for_test):
+    """
+    Test successfully retrieves a specific version of a policy using policyId and versionNo.
+    Steps:
+    1. Get the created policy (version 1)
+    2. Update it to create version 2
+    3. Retrieve version 1 using the API
+    4. Verify the response matches version 1
+    """
+    policy_json = create_policy_for_test['policy_json']
+    policy_id = policy_json['id']
+    original_description = policy_json['description']
+    version_1 = policy_json['version']
+
+    # Update policy to create version 2
+    fields_to_update = {"description": "Version 2 description"}
+    updated_data = get_updated_request_data(request_data=policy_json, fields_to_update=fields_to_update)
+
+    update_url = base_url + f'/plugins/policies/{policy_id}'
+    update_resp = requests.put(update_url, verify=False, auth=admin_auth, headers=headers,
+                               data=json.dumps(updated_data))
+
+    assert update_resp.status_code == 200, "Failed to update policy"
+
+    # Get version 1 using the version API - CORRECTED URL
+    request_url = base_url + f'/plugins/policy/{policy_id}/version/{version_1}'
+
+    resp = requests.get(request_url, verify=False, auth=admin_auth, headers=headers)
+    assert resp.status_code == 200, "Expected status code 200"
+
+    versioned_policy = resp.json()
+    assert versioned_policy['version'] == version_1, "Retrieved policy version does not match"
+    assert versioned_policy['description'] == original_description, "Version 1 description does not match"
+    assert versioned_policy['id'] == policy_id, "Policy ID does not match"
+
+
+def test_get_policy_for_invalid_policy_id():
+    """
+    Test validates that API returns 404 for non-existent policy ID.
+    """
+    invalid_policy_id = 999999999
+    version_no = 1
+
+    request_url = base_url + f'/plugins/policy/{invalid_policy_id}/version/{version_no}'
+
+    resp = requests.get(request_url, verify=False, auth=admin_auth, headers=headers)
+    assert resp.status_code == 400, "API should return 404 for non-existent policy ID"
+
+
+def test_get_policy_for_invalid_version_number(create_policy_for_test):
+    """
+    Test validates that API returns 404 for non-existent version number.
+    """
+    policy_json = create_policy_for_test['policy_json']
+    policy_id = policy_json['id']
+    invalid_version = 999999
+
+    request_url = base_url + f'/plugins/policies/policy/{policy_id}/version/{invalid_version}'
+
+    resp = requests.get(request_url, verify=False, auth=admin_auth, headers=headers)
+    assert resp.status_code == 404, "API should return 404 for non-existent version number"
+
+
+def test_get_policy_for_version_number_by_auditor(create_policy_for_test):
+    """
+    Test validates that auditor role can retrieve policy versions.
+    Auditors should have read access to policy history.
+    """
+    policy_json = create_policy_for_test['policy_json']
+    policy_id = policy_json['id']
+    version_no = policy_json['version']
+
+    request_url = base_url + f'/plugins/policy/{policy_id}/version/{version_no}'
+
+    resp = requests.get(request_url, verify=False,
+                        auth=HTTPBasicAuth(str_variable_dict['auditor_user'], 'Test@12345'),
+                        headers=headers)
+    assert resp.status_code == 200, "Auditor should be able to retrieve policy version"
+
+
+def test_get_policy_for_version_number_by_unauthorized_user(create_policy_for_test):
+    """
+    Test validates that users without proper permissions cannot retrieve policy versions.
+    """
+    policy_json = create_policy_for_test['policy_json']
+    policy_id = policy_json['id']
+    version_no = policy_json['version']
+
+    request_url = base_url + f'/plugins/policy/{policy_id}/version/{version_no}'
+
+    resp = requests.get(request_url, verify=False,
+                        auth=HTTPBasicAuth(str_variable_dict['user3'], 'Test@12345'),
+                        headers=headers)
+    assert resp.status_code ==403 , "Unauthorized user should not retrieve policy version"
+
+
+def test_get_policy_for_version_number_by_keyadmin_for_non_kms_policy(create_policy_for_test):
+    """
+    Test validates that keyadmin role cannot retrieve non-KMS policy versions.
+    """
+    policy_json = create_policy_for_test['policy_json']
+    policy_id = policy_json['id']
+    version_no = policy_json['version']
+
+    request_url = base_url + f'/plugins/policy/{policy_id}/version/{version_no}'
+
+    resp = requests.get(request_url, verify=False, auth=keyadmin_auth, headers=headers)
+    assert resp.status_code in [400, 403], "Keyadmin should not retrieve non-KMS policy version"
+
+def test_get_policy_for_version_number_by_keyadmin_for_kms_policy(create_kms_policy_for_test):
+    """
+    Test validates that keyadmin role cannot retrieve non-KMS policy versions.
+    """
+    policy_json = create_kms_policy_for_test['policy_json']
+    policy_id = policy_json['id']
+    version_no = policy_json['version']
+
+    request_url = base_url + f'/plugins/policy/{policy_id}/version/{version_no}'
+
+    resp = requests.get(request_url, verify=False, auth=keyadmin_auth, headers=headers)
+    assert resp.status_code ==200 , "Keyadmin should be allowed to retruve kms policy version"
 
 
 
+def test_get_policy_for_version_zero(create_policy_for_test):
+    """
+    Test validates handling of version number 0 (invalid version).
+    """
+    policy_json = create_policy_for_test['policy_json']
+    policy_id = policy_json['id']
+
+    request_url = base_url + f'/plugins/policy/{policy_id}/version/0'
+
+    resp = requests.get(request_url, verify=False, auth=admin_auth, headers=headers)
+    assert resp.status_code in [400, 404], "Version 0 should not be valid"
 
 
+def test_get_policy_for_negative_version_number(create_policy_for_test):
+    """
+    Test validates handling of negative version number (invalid).
+    """
+    policy_json = create_policy_for_test['policy_json']
+    policy_id = policy_json['id']
 
+    request_url = base_url + f'/plugins/policy/{policy_id}/version/-1'
+
+    resp = requests.get(request_url, verify=False, auth=admin_auth, headers=headers)
+    assert resp.status_code in [400, 404], "Negative version number should not be valid"
+
+
+def test_get_deleted_policy_version():
+    """
+    Test validates that versions of a deleted policy cannot be retrieved.
+    """
+    # Create and then delete a policy
+    request_url = base_url + '/plugins/policies'
+    request_data = get_request_data('test_create_policy.json', str_variable_dict, test_data_path)
+
+    resp = requests.post(request_url, verify=False, auth=admin_auth, headers=headers,
+                         data=json.dumps(request_data))
+    assert resp.status_code == 200, "Failed to create policy"
+    policy_json = resp.json()
+    policy_id = policy_json['id']
+    version_no = policy_json['version']
+
+    # Delete the policy
+    delete_url = base_url + f'/plugins/policies/{policy_id}'
+    delete_resp = requests.delete(delete_url, verify=False, auth=admin_auth, headers=headers)
+    assert delete_resp.status_code == 204, "Failed to delete policy"
+
+    # Try to retrieve version of deleted policy
+    version_url = base_url + f'/plugins/policies/policy/{policy_id}/version/{version_no}'
+    resp = requests.get(version_url, verify=False, auth=admin_auth, headers=headers)
+    assert resp.status_code == 404, "Should not retrieve version of deleted policy"
+
+
+def test_get_policy_version_list_success(log):
+    """
+    Test successfully retrieves the version list for a policy.
+    Steps:
+    1. Get the created policy
+    2. Update it multiple times to create multiple versions
+    3. Retrieve the version list
+    4. Verify all versions are present in the list
+    """
+    request_url = base_url + '/plugins/policies'
+    request_data = get_request_data('test_create_policy.json', str_variable_dict, test_data_path)
+    resp = requests.post(request_url, verify=False, auth=admin_auth, headers=headers, data=json.dumps(request_data))
+    status_code_policy_create= resp.status_code
+    resp_json = resp.json()
+    if resp.status_code == 200:
+        log.info(f"Created policy with ID: {resp_json['id']}")
+    else:
+        log.error(f"Failed to create policy for version list test. Status code: {resp.status_code}, Response: {resp.text}")
+    policy_json = resp.json()
+    policy_id = policy_json['id']
+
+    # Update policy multiple times to create versions 2, 3, 4
+    for i in range(2, 5):
+        update_url = base_url + f'/plugins/policies/{policy_id}'
+        update_resp = requests.put(update_url, verify=False, auth=admin_auth, headers=headers,
+                                   data=json.dumps(policy_json))
+        assert update_resp.status_code == 200, f"Failed to create version {i}"
+
+
+    # Get version list
+    request_url = base_url + f'/plugins/policy/{policy_id}/versionList'
+    resp = requests.get(request_url, verify=False, auth=admin_auth, headers=headers)
+    assert resp.status_code == 200, "Expected status code 200"
+
+    version_list = resp.json()
+    assert 'value' in version_list, "Response should contain 'value' field"
+    versions = version_list['value'].split(',')
+
+    # Verify all 4 versions exist
+    assert len(versions) == 4, f"Expected 4 versions, got {len(versions)}"
+    assert '1' in versions, "Version 1 should be in the list"
+    assert '2' in versions, "Version 2 should be in the list"
+    assert '3' in versions, "Version 3 should be in the list"
+    assert '4' in versions, "Version 4 should be in the list"
+
+    # deleting the created policy for cleanup
+    if status_code_policy_create == 200:
+        delete_url = base_url + f'/plugins/policies/{policy_id}'
+        delete_resp = requests.delete(delete_url, verify=False, auth=admin_auth, headers=headers)
+        if delete_resp.status_code in [200,204]:
+            log.info(f"Deleted policy with ID: {policy_id}")
+        else:
+            log.error(f"Failed to delete policy. Status code: {delete_resp.status_code}, Response: {delete_resp.text}")
+
+
+def test_get_policy_version_list_invalid_policy_id():
+    """
+    Test validates that API returns 404/400 for non-existent policy ID.
+    """
+    invalid_policy_id = 999999999
+
+    request_url = base_url + f'/plugins/policy/{invalid_policy_id}/versionList'
+
+    resp = requests.get(request_url, verify=False, auth=admin_auth, headers=headers)
+    assert resp.status_code in [400, 404], "API should return error for non-existent policy ID"
+
+
+def test_get_policy_version_list_by_auditor(create_policy_for_test):
+    """
+    Test validates that auditor role can retrieve policy version list.
+    Auditors should have read access to policy version history.
+    """
+    policy_json = create_policy_for_test['policy_json']
+    policy_id = policy_json['id']
+
+    request_url = base_url + f'/plugins/policy/{policy_id}/versionList'
+
+    resp = requests.get(request_url, verify=False,
+                        auth=HTTPBasicAuth(str_variable_dict['auditor_user'], 'Test@12345'),
+                        headers=headers)
+    assert resp.status_code == 200, "Auditor should be able to retrieve policy version list"
+
+
+def test_get_policy_version_list_by_keyadmin_for_non_kms_policy(create_policy_for_test):
+    """
+    Test validates that keyadmin role cannot retrieve non-KMS policy version list.
+    """
+    policy_json = create_policy_for_test['policy_json']
+    policy_id = policy_json['id']
+
+    request_url = base_url + f'/plugins/policy/{policy_id}/versionList'
+
+    resp = requests.get(request_url, verify=False, auth=keyadmin_auth, headers=headers)
+    assert resp.status_code in [400, 403], "Keyadmin should not retrieve non-KMS policy version list"
+
+
+def test_get_policy_version_list_by_keyadmin_for_kms_policy(create_kms_policy_for_test):
+    """
+    Test validates that keyadmin role can retrieve KMS policy version list.
+    """
+    policy_json = create_kms_policy_for_test['policy_json']
+    policy_id = policy_json['id']
+
+    request_url = base_url + f'/plugins/policy/{policy_id}/versionList'
+
+    resp = requests.get(request_url, verify=False, auth=keyadmin_auth, headers=headers)
+    assert resp.status_code == 200, "Keyadmin should be able to retrieve KMS policy version list"
+
+
+def test_get_policy_version_list_deleted_policy(log):
+    """
+    Test validates that version list of a deleted policy cannot be retrieved.
+    """
+    # Create and then delete a policy
+    request_url = base_url + '/plugins/policies'
+    request_data = get_request_data('test_create_policy.json', str_variable_dict, test_data_path)
+
+    resp = requests.post(request_url, verify=False, auth=admin_auth, headers=headers,
+                         data=json.dumps(request_data))
+    assert resp.status_code in [200, 204], "Could not create policy for deletion test"
+    if resp.status_code == 200:
+        log.info(f"created policy with ID: {resp.json()['id']} for deletion test")
+    else:
+        log.error(f"Failed to create policy for deletion test. Status code: {resp.status_code}, Response: {resp.text}")
+
+
+    policy_json = resp.json()
+    policy_id = policy_json['id']
+
+    # Delete the policy
+    delete_url = base_url + f'/plugins/policies/{policy_id}'
+    delete_resp = requests.delete(delete_url, verify=False, auth=admin_auth, headers=headers)
+    assert delete_resp.status_code in [200 , 204], "Failed to delete policy for version list deletion test"
+    if delete_resp.status_code in [200,204]:
+        log.info(f"Deleted policy with ID: {policy_id}")
+    else:
+        log.error(f"Failed to delete policy. Status code: {delete_resp.status_code}, Response: {delete_resp.text}")
+
+    # Try to retrieve version list of deleted policy
+    version_list_url = base_url + f'/plugins/policy/{policy_id}/versionList'
+    resp = requests.get(version_list_url, verify=False, auth=admin_auth, headers=headers)
+    assert resp.status_code in [400, 404], "Should not retrieve version list of deleted policy"
 
 
 

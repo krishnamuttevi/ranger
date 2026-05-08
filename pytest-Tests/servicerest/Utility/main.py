@@ -15,6 +15,8 @@ str_variable_dict = {}
 variable_dict = {}
 
 
+
+
 is_version_7_3_2 = Version.current_cdh_parcel_version() >= Version.of("7.3.2.0")
 
 headers = {
@@ -34,6 +36,31 @@ def return_random_str(length=7):
     """Generates a random string of fixed length """
     letters = string.ascii_lowercase + string.digits
     return ''.join(random.choice(letters) for i in range(length))
+
+grant_db_name = f"vehicle_{return_random_str(7)}"
+grant_table_name = f"cars_{return_random_str(7)}"
+grant_policy_name = f"grant_policy_{return_random_str(7)}"
+grant_db_name2 = f"vehicle_{return_random_str(7)}"
+grant_table_name2 = f"cars_{return_random_str(7)}"
+grant_policy_name2 = f"grant_policy_{return_random_str(7)}"
+grant_policy_name3 = f"grant_policy_{return_random_str(7)}"
+grant_db_name3 = f"vehicle_{return_random_str(7)}"
+grant_table_name3 = f"cars_{return_random_str(7)}"
+grant_policy_name4 = f"grant_policy_{return_random_str(7)}"
+grant_db_name4 = f"vehicle_{return_random_str(7)}"
+grant_table_name4 = f"cars_{return_random_str(7)}"
+str_variable_dict['grant_db_name'] = grant_db_name
+str_variable_dict['grant_table_name'] = grant_table_name
+str_variable_dict['grant_policy_name'] = grant_policy_name
+str_variable_dict['grant_db_name2'] = grant_db_name2
+str_variable_dict['grant_table_name2'] = grant_table_name2
+str_variable_dict['grant_policy_name2'] = grant_policy_name2
+str_variable_dict['grant_policy_name3'] = grant_policy_name3
+str_variable_dict['grant_db_name3'] = grant_db_name3
+str_variable_dict['grant_table_name3'] = grant_table_name3
+str_variable_dict['grant_policy_name4'] = grant_policy_name4
+str_variable_dict['grant_db_name4'] = grant_db_name4
+str_variable_dict['grant_table_name4'] = grant_table_name4
 
 def get_request_data(file_name, variable_dict, test_data_path):
     file_path = os.path.join(test_data_path, file_name)

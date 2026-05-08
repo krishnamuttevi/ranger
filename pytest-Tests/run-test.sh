@@ -101,7 +101,8 @@ for service in "${EXTRA_SERVICES[@]}"; do
   done
 done
 
-# Deduplicate
+# Deduplicatec
+DOCKER_BACKED+=("kms")
 DOCKER_BACKED=($(printf '%s\n' "${DOCKER_BACKED[@]}" | sort -u))
 
 if [[ "${#DOCKER_BACKED[@]}" -gt 0 ]]; then
@@ -123,6 +124,10 @@ fi
 
 if [[ "${admin_missing}" == "true" ]]; then
   echo "Admin service (${ADMIN_SERVICE}) missing."
+  # Remove leftover 'version' directory from previous build to prevent mv error
+  if [[ "${CLEAN_CONTAINERS}" == "1" ]]; then
+    rm -rf dist/version
+  fi
 
   docker compose -f docker-compose.ranger-build.yml build
   if [[ $? -ne 0 ]]; then
@@ -191,7 +196,7 @@ done
 
 if [[ "${missing}" == "true" ]]; then
   echo "Some containers are missing. Creating services..."
-  docker compose "${DOCKER_FILES[@]}" up -d
+  docker compose "${DOCKER_FILES[@]}" up -d --build
 else
   echo "All containers already exist. Starting without rebuild..."
   docker compose "${DOCKER_FILES[@]}" up -d

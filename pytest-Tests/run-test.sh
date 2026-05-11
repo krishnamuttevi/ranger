@@ -42,7 +42,7 @@ EXTRA_SERVICES=("$@")
 # Prompt for DB_TYPE if not provided
 if [[ -z "${DB_TYPE}" ]]; then
   echo ""
-  echo "Available DB types: postgres, mysql, oracle, mssql"
+  echo "Available DB types: postgres, mysql, oracle"
   read -rp "Enter DB type (press Enter to default to postgres): " input_db
   DB_TYPE="${input_db:-postgres}"
 fi

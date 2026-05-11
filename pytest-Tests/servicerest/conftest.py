@@ -1,3 +1,28 @@
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
+# This workflow will build a Java project with Maven, and cache/restore any dependencies to improve the workflow execution time
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-java-with-maven
+
+# This workflow uses actions that are not certified by GitHub.
+# They are provided by a third-party and are governed by
+# separate terms of service, privacy policy, and support
+# documentation.
+
+
 from contextlib import nullcontext
 
 import pytest
@@ -20,22 +45,24 @@ variables_data_path=os.path.join(BASE_DIR, "Utility", "variable_jsons")
 LOG_FILE_PATH = os.path.join(BASE_DIR, "automation.log")
 
 # --- 1. The Logger Configuration ---
+
+
 def custlogger(logger_name):
     logger = logging.getLogger(logger_name)
     logger.setLevel(logging.INFO)
 
-    # mode='a' so all tests in the run write to the same fresh file
-    fh = logging.FileHandler(LOG_FILE_PATH, mode='a')
+    # Only add handler if one doesn't already exist
+    if not logger.handlers:
+        fh = logging.FileHandler(LOG_FILE_PATH, mode='a')
+        formatter = logging.Formatter(
+            '%(asctime)s - %(levelname)s - %(name)s : %(message)s',
+            datefmt='%m/%d/%Y %I:%M:%S %p'
+        )
+        fh.setFormatter(formatter)
+        logger.addHandler(fh)
 
-
-    formatter = logging.Formatter(
-        '%(asctime)s - %(levelname)s - %(name)s : %(message)s',
-        datefmt='%m/%d/%Y %I:%M:%S %p'
-    )
-
-    fh.setFormatter(formatter)
-    logger.addHandler(fh)
     return logger
+
 
 # --- 2. Clear log file at the start of the suite ---
 @pytest.fixture(scope="session", autouse=True)
@@ -344,20 +371,28 @@ def setup_for_import_export_policies(session_log):
             else:
                 session_log.error(f"Failed to delete destination service ID: {destination_service_id}", extra={"response_status": resp2.status_code, "response_text": resp2.text})
 
-        if source_user_name:
-            resp3=requests.delete(base_url + f'/xusers/users/userName/{source_user_name}?forceDelete=true', verify=False, auth=admin_auth, headers=headers)
-            if resp3.status_code in [200,204]:
-                session_log.info(f"Deleted source user: {source_user_name}")
-            else:
-                session_log.error(f"Failed to delete source user: {source_user_name}", extra={"response_status": resp3.status_code, "response_text": resp3.text})
+        for user_name in [source_user_name, destination_user_name]:
+            if user_name:
+                # 1. Get the User ID
+                lookup_url = base_url + f'/xusers/users?name={user_name}'
+                lookup_resp = requests.get(lookup_url, verify=False, auth=admin_auth, headers=headers)
 
-        if destination_user_name:
-            resp4=requests.delete(base_url + f'/xusers/users/userName/{destination_user_name}?forceDelete=true', verify=False, auth=admin_auth, headers=headers)
-            if resp4.status_code in [200,204]:
-                session_log.info(f"Deleted destination user: {destination_user_name}")
-            else:
-                session_log.error(f"Failed to delete destination user: {destination_user_name}", extra={"response_status": resp4.status_code, "response_text": resp4.text})
+                if lookup_resp.status_code == 200:
+                    users_list = lookup_resp.json().get('vXUsers', [])
+                    if users_list:
+                        user_id = users_list[0].get('id')
+                        # 2. Delete using the verified ID endpoint
+                        delete_url = base_url + f'/xusers/secure/users/id/{user_id}?forceDelete=true'
+                        resp = requests.delete(delete_url, verify=False, auth=admin_auth, headers=headers)
 
+                        if resp.status_code in [200, 204]:
+                            session_log.info(f"Deleted hbase service user: {user_name} (ID: {user_id})")
+                        else:
+                            session_log.error(f"Failed to delete hbase service user: {user_name} (Status: {resp.status_code})")
+                    else:
+                        session_log.info(f"User {user_name} not found for deletion.")
+                else:
+                    session_log.error(f"Failed to lookup user {user_name} for deletion.")
 
 
 @pytest.fixture(scope="session")

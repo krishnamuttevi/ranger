@@ -83,7 +83,8 @@ chmod +x run_tests.sh
 
 Configure container behavior before running the script using the following environment variables:
 
-1. Fresh Setup & Cleanup
+1. Fresh Setup & Cleanup:
+
 Force a clean environment & helps building binaries with local changes (removes old Ranger containers, prunes Docker space, builds fresh, and cleans up after tests):
 ```text
 export CLEAN_CONTAINERS=1

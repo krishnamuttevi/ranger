@@ -726,9 +726,10 @@ def validate_sync_source_info(payload, response_json):
     from datetime import datetime
 
     priority = [
+        "ldapSyncSourceInfo",
         "unixSyncSourceInfo",
-        "fileSyncSourceInfo",
-        "ldapSyncSourceInfo"
+        "fileSyncSourceInfo"
+        
     ]
 
     selected_source = None

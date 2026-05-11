@@ -45,6 +45,7 @@ import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
+import javax.ws.rs.OPTIONS;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
@@ -80,6 +81,7 @@ public class KMS {
     private static final String KEY_NAME_VALIDATION     = "[a-z,A-Z,0-9](?!.*--)(?!.*__)(?!.*-_)(?!.*_-)[\\w\\-\\_]*";
     private static final int    MAX_NUM_PER_BATCH       = 10000;
     private static final String GENERATE_DEK_PATH_CONST = "_dek";
+    private static final int    DEFAULT_KEY_SIZE        = 256;
 
     private final KeyProviderCryptoExtension provider;
     private final KMSAudit                   kmsAudit;
@@ -113,7 +115,7 @@ public class KMS {
 
             final String cipher      = (String) jsonKey.get(KMSRESTConstants.CIPHER_FIELD);
             final String material    = (String) jsonKey.get(KMSRESTConstants.MATERIAL_FIELD);
-            final int    length      = (jsonKey.containsKey(KMSRESTConstants.LENGTH_FIELD)) ? (Integer) jsonKey.get(KMSRESTConstants.LENGTH_FIELD) : 0;
+            final int    length      = (jsonKey.containsKey(KMSRESTConstants.LENGTH_FIELD)) ? (Integer) jsonKey.get(KMSRESTConstants.LENGTH_FIELD) : DEFAULT_KEY_SIZE;
             final String description = (String) jsonKey.get(KMSRESTConstants.DESCRIPTION_FIELD);
 
             LOG.debug("Creating key: name={}, cipher={}, keyLength={}, description={}", name, cipher, length, description);
@@ -162,10 +164,13 @@ public class KMS {
             int    idx        = requestURL.lastIndexOf(KMSRESTConstants.KEYS_RESOURCE);
 
             requestURL = requestURL.substring(0, idx);
+            URI locationURI = getKeyURI(requestURL, name);
 
-            return Response.created(getKeyURI(KMSRESTConstants.SERVICE_VERSION, name))
+            Response response = Response.created(locationURI)
                     .type(MediaType.APPLICATION_JSON)
-                    .header("Location", getKeyURI(requestURL, name)).entity(json).build();
+                    .entity(json)
+                    .build();
+            return response;
         } catch (Exception e) {
             LOG.error("Exception in createKey.", e);
 
@@ -173,6 +178,15 @@ public class KMS {
         } finally {
             LOG.debug("<== createKey()");
         }
+    }
+
+    /**
+     * Handles OPTIONS requests for the root v1 resource (e.g., /kms/v1/).
+     * This is required for the Kerberos/SPNEGO authentication handshake.
+     */
+    @OPTIONS
+    public Response getOptions() {
+        return Response.ok().build();
     }
 
     @DELETE

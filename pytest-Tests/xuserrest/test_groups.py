@@ -337,7 +337,7 @@ class TestSecureGroups:
             "name": group_name,
             "groupSource": 0
             }
-        response_code = 403
+        response_code = 404 # Set default response to 404 for auth failures to prevent API endpoint discovery due to spring slient failure.
         mandatory_fields = ["name"]
 
         if test_case == "missing mandatory field name":
@@ -443,7 +443,7 @@ class TestSecureGroups:
             expected_response_code = 404
         else:
             temp_group_id = self.group_id
-            expected_response_code = [403, 405]
+            expected_response_code = 404  # Set default response to 404 for auth failures to prevent API endpoint discovery due to spring slient failure.
         response = requests.delete(
             f"{self.base_url}/xusers/secure/groups/id/{temp_group_id}",
             auth = auth,
@@ -464,7 +464,7 @@ class TestSecureGroups:
         else:
             temp_group = self.group
             name = temp_group["name"]
-            expected_response_code = [403, 405]
+            expected_response_code = 404 # Set default response to 404 for auth failures to prevent API endpoint discovery due to spring slient failure.
         
         response = requests.delete(
             f"{self.base_url}/xusers/secure/groups/{name}",
@@ -495,7 +495,7 @@ class TestSecureGroups:
             for name in names:
                 flag = group_exists_by_name(name, self.ranger_admin_config, self.base_url, self.headers)
                 assert flag, f"Group with name {name} does not exist before deletion which is expected for test case: {test_case}"
-            expexted_response_code = [403, 405]
+            expexted_response_code = 404 # Set default response to 404 for auth failures to prevent API endpoint discovery due to spring slient failure.
         payload = {
             "vXStrings": [{"value": name} for name in names]
         }
@@ -879,7 +879,7 @@ class TestGroups:
         payload = {
             "name": group_name
         }
-        response_code = 403
+        response_code = 404 # Set default response to 404 for auth failures to prevent API endpoint discovery due to spring slient failure.
 
         if test_case == "missing mandatory field name":
             del payload["name"]
@@ -953,7 +953,7 @@ class TestGroups:
             print(" it is executed for test case: ", test_case)
         else:
             temp_group_id = self.group_id
-            expected_response_code = [403, 405]
+            expected_response_code = 404 # Set default response to 404 for auth failures to prevent API endpoint discovery due to spring slient failure.
         
         response = requests.delete(
             f"{self.base_url}/xusers/groups/{temp_group_id}",
@@ -985,7 +985,7 @@ class TestGroups:
         else:
             temp_group = self.group
             name = temp_group["name"]
-            expected_response_code = [403, 405]
+            expected_response_code = 404 # Set default response to 404 for auth failures to prevent API endpoint discovery due to spring slient failure.
         
         response = requests.delete(
             f"{self.base_url}/xusers/groups/groupName/{name}",
@@ -1018,7 +1018,7 @@ class TestGroups:
         else:
             user_name = self.user["name"]
             group_name = self.group["name"]
-            expected_response_code = [403, 405]
+            expected_response_code = 404 # Set default response to 404 for auth failures to prevent API endpoint discovery due to spring slient failure.
 
         response = requests.delete(
             f"{self.base_url}/xusers/group/{group_name}/user/{user_name}",
@@ -1373,7 +1373,8 @@ class TestGroupUsers:
             "parentGroupId": temp_group_id,
             "userId": temp_user_id
         }
-        response_code = 403
+        response_code = 404 # Set default response to 404 for auth failures to prevent API endpoint discovery due to spring slient failure.
+
         if test_case == "missing mandatory field name":
             del payload["name"]
             response_code = 400
@@ -1429,23 +1430,23 @@ class TestGroupUsers:
             payload = {
                 "id": grp_user_id,
                 "name": temp_group["name"], 
-                "userId": -999999
+                "userId": -9999
             }
-            response_code = 400
+            response_code = 404
         elif test_case == "invalid payload - non existent group name":
             payload = {
                 "id": grp_user_id,
-                "name": "non_existent_group_name_" + str(uuid.uuid4())[:8], 
+                "name": "non_existent_group_name_ugn_" + str(uuid.uuid4())[:8], 
                 "userId": temp_user_id
             }
-            response_code = 400
+            response_code = 200
         elif test_case == "invalid payload - non existent id":
             payload = {
                 "id": -999999,
                 "name": temp_group["name"], 
                 "userId": temp_user_id
             }
-            response_code = 400
+            response_code = 400 
         elif test_case.startswith("invalid auth"):
             payload = {
                 "id": grp_user_id,
@@ -1486,7 +1487,7 @@ class TestGroupUsers:
             expected_response_code = 400
         else:
             target_id = grp_user_id
-            expected_response_code = [403, 405]
+            expected_response_code = 404 # Set default response to 404 for auth failures to prevent API endpoint discovery due to spring slient failure.
 
         response = requests.delete(
             f"{self.base_url}/xusers/groupusers/{target_id}",

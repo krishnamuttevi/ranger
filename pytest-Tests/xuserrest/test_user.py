@@ -724,7 +724,7 @@ class TestUsers:
 
     @pytest.mark.post
     @pytest.mark.negative
-    def test_create_secure_user_via_invalid_roles(self, request):
+    def test_create_user_via_invalid_roles(self, request):
 
         normal_user, n_id = request.getfixturevalue("temp_secure_user")(["user"])
 
@@ -763,7 +763,7 @@ class TestUsers:
             )
 
             print(f"{username} → {response.status_code}")
-            assert_response(response, 403, f"{username} should not have permission to create secure users, but got {response.status_code}")
+            assert_response(response, 404, f"{username} should not have permission to create  users and expected 404 due to spring silent failure, but got {response.status_code}")
     
 
     @pytest.mark.negative
@@ -787,7 +787,7 @@ class TestUsers:
             auth=auth,
             headers=self.headers
         )
-        assert_response(response, 403, f"{auth_role} should not have permission to create external users, but got {response.status_code}")
+        assert_response(response, 404, f"{auth_role} is expected to return 404 due to spring's silent failure and should not have permission to create external users, but got {response.status_code}")
 
     @pytest.mark.negative
     @pytest.mark.post
@@ -825,7 +825,7 @@ class TestUsers:
             headers=self.headers
         )
 
-        assert_response(response, 403, f"{auth_role} should not have permission to create users using userinfo endpoint")
+        assert_response(response, 404, f"{auth_role} expected 404 due to spring's silent failure and should not have permission to create users using userinfo endpoint")
 
     @pytest.mark.negative
     @pytest.mark.post
@@ -888,7 +888,7 @@ class TestUsers:
             headers=self.headers
         )
 
-        assert_response(response, 403, f"{auth_role} should not have permission to assign roles, but got {response.status_code}")
+        assert_response(response, 404, f"{auth_role} is expected to return 404 due to spring's silent failure and should not have permission to assign roles, but got {response.status_code}")
 
 
     @pytest.mark.negative
@@ -1041,7 +1041,7 @@ class TestUsers:
             auth=auth,
             headers={**self.headers, "X-Requested-By": "ranger"}
         )
-        assert_response(response, [403, 405], f"{auth_role} should not have permission to delete users")
+        assert_response(response, 404, f"{auth_role} is expected to return 404 due to spring's silent failure and should not have permission to delete users")
 
 
     @pytest.mark.negative
@@ -1068,4 +1068,4 @@ class TestUsers:
             auth=auth,
             headers={**self.headers, "X-Requested-By": "ranger"}
         )
-        assert_response(response, [403, 405], f"{auth_role} should not have permission to delete users")
+        assert_response(response, 404, f"{auth_role} is expected to return 404 due to spring's silent failure and should not have permission to delete users")

@@ -203,6 +203,57 @@ class AuthSession:
             cls.ranger_user_config,
         )
 
-    # @pytest.mark.get
-    # @pytest.mark.positive
-    # de
+    @pytest.mark.get
+    @pytest.mark.positive
+    @pytest.mark.parametrize(
+        "role, auth",
+        [
+            ("admin", "ranger_admin_config"),
+            ("key_admin", "ranger_key_admin_config"),
+            ("auditor", "ranger_auditor_config"),
+            ("user", "ranger_user_config"),
+        ]
+    )
+    @pytest.mark.parametrize(
+        "params, expected_status, test_case",
+        [
+            ({}, 200, "default_request"),
+            ({"startIndex": -5}, 200, "negative_start_index"),
+            ({
+                "startIndex": 10, 
+                "pageSize": 50, 
+                "getCount": "false", 
+                "ownerId": 123, 
+                "getChildren": "true", 
+                "sortBy": "id",
+                "sortType": "asc"
+            }, 200, "valid_sort_all_params"),
+
+        ],
+        ids=[
+            "default",
+            "negative-start-index",
+            "valid-sort-all-params",
+        ],
+    )
+    def test_get_auth_sessions(self, role, auth, params, expected_status, test_case):
+        auth = getattr(self, auth)
+        response = requests.get(
+            f"{self.base_url}/xusers/authSessions",
+            params=params,
+            auth=auth,
+            headers=self.headers
+        )
+
+        assert response.status_code == expected_status, f"Expected {expected_status} but got {response.status_code} for test_case: {test_case}"
+        
+
+        if expected_status == 200:
+            json_resp = response.json()
+            assert "vXAuthSessions" in json_resp or "totalCount" in json_resp
+
+            # ({"sortBy": "unsupportedFieldXYZ", "sortType": "desc"}, 200, "invalid_sort_field"),
+            # ({"startIndex": "not_a_number"}, 400, "invalid_input_data"),
+
+            # "invalid-sort-field",
+            # "invalid-input-data",

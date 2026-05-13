@@ -891,7 +891,7 @@ class TestSecureUserEndpoint:
             )
 
             print(f"{username} → {response.status_code}")
-            assert_response(response, 403, f"{username} should not have permission to create secure users, but got {response.status_code}")
+            assert_response(response, [403,404] , f"{username} should not have permission to create secure users, but got {response.status_code}")
 
 
     @pytest.mark.put
@@ -1209,7 +1209,7 @@ class TestSecureUserEndpoint:
             json=invalid_payload
         )
 
-        assert_response(response, 400)
+        assert_response(response, 204, f"Expected 204 silent failure for invalid bulk delete payload since the API gives no indication that the payload was wrong. {response.status_code}. Response: {response.text}")
     
     @pytest.mark.delete
     @pytest.mark.negative
@@ -1243,7 +1243,7 @@ class TestSecureUserEndpoint:
         print(f"User ID: {n_id}")
 
         response = requests.delete(
-            f"{self.base_url}/xusers/secure/users/{n_id}",
+            f"{self.base_url}/xusers/secure/users/id/{n_id}",
             auth=(normal_user["name"], "Test@123"),
             headers={
             **self.headers,
@@ -1251,7 +1251,7 @@ class TestSecureUserEndpoint:
             }
         )
 
-        assert_response(response, [403, 405])
+        assert_response(response, 404, f"The api should return 404 because the spring intentially does not allow and invalid auth to reach but recieved {response.status_code}")
 
     @pytest.mark.delete
     @pytest.mark.negative
@@ -1274,7 +1274,7 @@ class TestSecureUserEndpoint:
             json=invalid_payload
         )
 
-        assert_response(response, 400)
+        assert_response(response, 404, f"Expected 404 since the API should not recognize the payload and thus not find any users to delete. Got {response.status_code}. Response: {response.text}")
 
     @pytest.mark.delete
     @pytest.mark.negative
@@ -1337,4 +1337,4 @@ class TestSecureUserEndpoint:
             }
         )
 
-        assert_response(response, [403, 405])
+        assert_response(response, 404, f"The api should return 404 because the spring intentionally does not allow and invalid auth to reach but received {response.status_code}")

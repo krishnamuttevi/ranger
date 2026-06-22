@@ -395,6 +395,20 @@ public class TestServiceREST {
     public void test2updateServiceDef() throws Exception {
         RangerServiceDef rangerServiceDef = rangerServiceDef();
 
+        // Ensure the service def has a name to pass validation
+        if (StringUtils.isBlank(rangerServiceDef.getName())) {
+            rangerServiceDef.setName("hdfs");
+        }
+
+        // Mock restErrorUtil to prevent NullPointerException
+        WebApplicationException mockException = new WebApplicationException(
+                "serviceDef Id mismatch",
+                HttpServletResponse.SC_BAD_REQUEST);
+        Mockito.when(restErrorUtil.createRESTException(
+                Mockito.anyInt(),
+                Mockito.anyString(),
+                Mockito.anyBoolean())).thenReturn(mockException);
+
         Mockito.when(validatorFactory.getServiceDefValidator(svcStore)).thenReturn(serviceDefValidator);
         Mockito.when(svcStore.updateServiceDef(Mockito.any())).thenReturn(rangerServiceDef);
 
@@ -1099,10 +1113,62 @@ public class TestServiceREST {
     @Test
     public void test35validateConfig() throws Exception {
         RangerService rangerService = rangerService();
+        Mockito.when(bizUtil.isAdmin()).thenReturn(true);
         Mockito.when(serviceMgr.validateConfig(rangerService, svcStore)).thenReturn(vXResponse);
         VXResponse dbVXResponse = serviceREST.validateConfig(rangerService);
         Assertions.assertNotNull(dbVXResponse);
         Mockito.verify(serviceMgr).validateConfig(rangerService, svcStore);
+    }
+
+    @Test
+    public void test35ValidateConfig_NonAdminUser_ThrowsForbidden() throws Exception {
+        RangerService rangerService = rangerService();
+        Mockito.when(bizUtil.isAdmin()).thenReturn(false);
+        Mockito.when(restErrorUtil.createRESTException(Mockito.eq(HttpServletResponse.SC_FORBIDDEN),
+                Mockito.eq(ServiceREST.ERR_VALIDATE_CONFIG_ADMIN_ONLY),
+                Mockito.eq(true))).thenReturn(new WebApplicationException(HttpServletResponse.SC_FORBIDDEN));
+        Assertions.assertThrows(WebApplicationException.class, () -> serviceREST.validateConfig(rangerService));
+        Mockito.verify(bizUtil).isAdmin();
+        Mockito.verify(restErrorUtil).createRESTException(HttpServletResponse.SC_FORBIDDEN, ServiceREST.ERR_VALIDATE_CONFIG_ADMIN_ONLY, true);
+        Mockito.verify(serviceMgr, Mockito.never()).validateConfig(Mockito.any(), Mockito.any());
+    }
+
+    @Test
+    public void test35eValidateConfig_KeyAdminUser_KmsService_Succeeds() throws Exception {
+        RangerService rangerService = rangerService();
+        rangerService.setType("cm_kms");
+        Mockito.when(bizUtil.isAdmin()).thenReturn(false);
+        Mockito.when(bizUtil.isKeyAdmin()).thenReturn(true);
+        XXServiceDef xServiceDef = serviceDef();
+        XXServiceDefDao xServiceDefDao = Mockito.mock(XXServiceDefDao.class);
+        xServiceDef.setImplclassname(EmbeddedServiceDefsUtil.KMS_IMPL_CLASS_NAME);
+        Mockito.when(daoManager.getXXServiceDef()).thenReturn(xServiceDefDao);
+        Mockito.when(xServiceDefDao.findByName("cm_kms")).thenReturn(xServiceDef);
+        Mockito.when(serviceMgr.validateConfig(rangerService, svcStore)).thenReturn(vXResponse);
+        VXResponse result = serviceREST.validateConfig(rangerService);
+        Assertions.assertNotNull(result);
+        Mockito.verify(bizUtil).isAdmin();
+        Mockito.verify(bizUtil).isKeyAdmin();
+        Mockito.verify(serviceMgr).validateConfig(rangerService, svcStore);
+    }
+
+    @Test
+    public void test35fValidateConfig_KeyAdminUser_NonKmsService_ThrowsForbidden() throws Exception {
+        RangerService rangerService = rangerService();
+        rangerService.setType("hdfs");
+        Mockito.when(bizUtil.isAdmin()).thenReturn(false);
+        Mockito.when(bizUtil.isKeyAdmin()).thenReturn(true);
+        XXServiceDef xServiceDef = serviceDef();
+        XXServiceDefDao xServiceDefDao = Mockito.mock(XXServiceDefDao.class);
+        xServiceDef.setImplclassname("org.apache.ranger.services.hdfs.RangerServiceHdfs");
+        Mockito.when(daoManager.getXXServiceDef()).thenReturn(xServiceDefDao);
+        Mockito.when(xServiceDefDao.findByName("hdfs")).thenReturn(xServiceDef);
+        Mockito.when(restErrorUtil.createRESTException(Mockito.eq(HttpServletResponse.SC_FORBIDDEN), Mockito.anyString(), Mockito.eq(true)))
+                .thenReturn(new WebApplicationException(HttpServletResponse.SC_FORBIDDEN));
+        Assertions.assertThrows(WebApplicationException.class, () -> serviceREST.validateConfig(rangerService));
+        Mockito.verify(bizUtil).isAdmin();
+        Mockito.verify(bizUtil).isKeyAdmin();
+        Mockito.verify(serviceMgr, Mockito.never()).validateConfig(Mockito.any(), Mockito.any());
     }
 
     @Test
@@ -1898,6 +1964,7 @@ public class TestServiceREST {
         loggedInUser.setId(8L);
         loggedInUser.setName("testuser");
         loggedInUser.setUserRoleList(loggedInUserRole);
+        currentUserSession.setUserRoleList(loggedInUserRole);
         Mockito.when(xUserService.getXUserByUserName("testuser")).thenReturn(loggedInUser);
         Mockito.when(svcStore.getService(Id)).thenReturn(actualService);
 
@@ -1934,6 +2001,7 @@ public class TestServiceREST {
         loggedInUser.setId(8L);
         loggedInUser.setName("testuser");
         loggedInUser.setUserRoleList(loggedInUserRole);
+        currentUserSession.setUserRoleList(loggedInUserRole);
         Mockito.when(xUserService.getXUserByUserName("testuser")).thenReturn(loggedInUser);
         Mockito.when(svcStore.getServiceByName(actualService.getName())).thenReturn(actualService);
 
@@ -1972,6 +2040,7 @@ public class TestServiceREST {
         loggedInUser.setId(8L);
         loggedInUser.setName("testuser");
         loggedInUser.setUserRoleList(loggedInUserRole);
+        currentUserSession.setUserRoleList(loggedInUserRole);
 
         Map<String, String> configs = new HashMap<>();
         configs.put("username", "servicemgr");
@@ -3186,7 +3255,7 @@ public class TestServiceREST {
     @Test
     public void test115ValidateConfigWithException() throws Exception {
         RangerService rangerService = rangerService();
-
+        Mockito.when(bizUtil.isAdmin()).thenReturn(true);
         Mockito.when(serviceMgr.validateConfig(rangerService, svcStore)).thenThrow(new RuntimeException("Validation failed"));
         Mockito.when(restErrorUtil.createRESTException(Mockito.anyString())).thenReturn(new WebApplicationException());
 
@@ -3821,6 +3890,28 @@ public class TestServiceREST {
         });
 
         Mockito.verify(restErrorUtil).createRESTException(Mockito.anyInt(), Mockito.anyString(), Mockito.anyBoolean());
+    }
+
+    @Test
+    void test155DownloadBlockedWhenUnauthenticatedAndFlagFalse() throws Exception {
+        HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
+        RangerContextHolder.setSecurityContext(null);                       // no session; flag=false (mock default)
+        Mockito.doCallRealMethod().when(bizUtil).failUnauthenticatedDownloadIfNotAllowed();
+        Mockito.when(restErrorUtil.createRESTException(Mockito.anyInt(), Mockito.anyString(), Mockito.anyBoolean()))
+                .thenReturn(new WebApplicationException());
+        Assertions.assertThrows(WebApplicationException.class, () -> serviceREST.getServicePoliciesIfUpdated("HDFS_1",
+                1L, 0L, "1", "", "", false, capabilityVector, request));
+    }
+
+    @Test
+    void test156GrantBlockedWhenUnauthenticatedAndFlagFalse() throws Exception {
+        HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
+        GrantRevokeRequest grantRequest = createValidGrantRevokeRequest();
+        Mockito.when(serviceUtil.isValidateHttpsAuthentication("HDFS_1", request)).thenReturn(true); // enter the guarded block
+        Mockito.doCallRealMethod().when(bizUtil).failUnauthenticatedIfNotAllowed();
+        RangerContextHolder.setSecurityContext(null);
+        Mockito.when(restErrorUtil.createRESTException(Mockito.anyString())).thenReturn(new WebApplicationException());
+        Assertions.assertThrows(WebApplicationException.class, () -> serviceREST.grantAccess("HDFS_1", grantRequest, request));
     }
 
     RangerPolicy rangerPolicy() {
@@ -4504,5 +4595,81 @@ public class TestServiceREST {
                 throw new RuntimeException(ite.getCause());
             }
         });
+    }
+
+    @Test
+    public void testUpdateServiceDefWithValidNameButMismatchedId() throws Exception {
+        // Arrange
+        RangerServiceDef serviceDef = rangerServiceDef();
+        serviceDef.setName("hdfs"); // Valid name
+        serviceDef.setId(999L);     // Mismatched ID (different from Id = 8L)
+
+        WebApplicationException mockException = new WebApplicationException();
+        Mockito.when(restErrorUtil.createRESTException(
+                Mockito.eq(HttpServletResponse.SC_BAD_REQUEST),
+                Mockito.eq("serviceDef Id mismatch"),
+                Mockito.eq(true)
+        )).thenReturn(mockException);
+
+        // Act & Assert
+        Assertions.assertThrows(WebApplicationException.class,
+                () -> serviceREST.updateServiceDef(serviceDef, Id));
+
+        // Verify the correct error was created
+        Mockito.verify(restErrorUtil).createRESTException(
+                HttpServletResponse.SC_BAD_REQUEST,
+                "serviceDef Id mismatch",
+                true);
+    }
+
+    @Test
+    public void testUpdateService_IdMismatchBetweenPayloadAndURL() throws Exception {
+        // service has id=8 in payload, but URL has id=99 — should trigger BAD_REQUEST
+        RangerService service = rangerService();
+        service.setId(8L);
+        service.setName("test-service");
+
+        HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
+        Mockito.when(request.getRequestURI()).thenReturn("/ranger/plugins/services/99");
+
+        WebApplicationException expectedException = new WebApplicationException(HttpServletResponse.SC_BAD_REQUEST);
+        Mockito.when(restErrorUtil.createRESTException(
+                HttpServletResponse.SC_BAD_REQUEST,
+                "serviceDef Id mismatch or service name not provided",
+                true)).thenReturn(expectedException);
+
+        Assertions.assertThrows(WebApplicationException.class, () ->
+                serviceREST.updateService(service, request));
+
+        Mockito.verify(restErrorUtil).createRESTException(
+                HttpServletResponse.SC_BAD_REQUEST,
+                "serviceDef Id mismatch or service name not provided",
+                true);
+    }
+
+    @Test
+    public void testUpdateService_BlankNameWithIdInPayload() throws Exception {
+        // service has id set but name is blank — should trigger BAD_REQUEST
+        RangerService service = rangerService();
+        service.setId(8L);
+        service.setName(""); // blank name
+
+        HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
+        Mockito.when(request.getRequestURI()).thenReturn("/ranger/plugins/services/8");
+
+        WebApplicationException expectedException = new WebApplicationException(HttpServletResponse.SC_BAD_REQUEST);
+        Mockito.when(restErrorUtil.createRESTException(
+                        HttpServletResponse.SC_BAD_REQUEST,
+                        "serviceDef Id mismatch or service name not provided",
+                        true))
+                .thenReturn(expectedException);
+
+        Assertions.assertThrows(WebApplicationException.class, () ->
+                serviceREST.updateService(service, request));
+
+        Mockito.verify(restErrorUtil).createRESTException(
+                HttpServletResponse.SC_BAD_REQUEST,
+                "serviceDef Id mismatch or service name not provided",
+                true);
     }
 }
